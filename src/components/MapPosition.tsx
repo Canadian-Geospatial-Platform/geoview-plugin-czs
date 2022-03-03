@@ -94,19 +94,23 @@ export const MapPosition = (): JSX.Element => {
     DomEvent.disableScrollPropagation(positionContainerHTMLElement);
 
     // listen to map drag move end event
-    api.on(api.eventNames.EVENT_MAP_MOVE_END, function (res: any) {
-      // if the event came from the loaded map
-      if (res.handlerName === 'mapWM') {
-        // get the returned position
-        const position = res.position as any;
+    api.on(
+      api.eventNames.EVENT_MAP_MOVE_END,
+      function (res: any) {
+        // if the event came from the loaded map
+        if (res.handlerName === 'mapWM') {
+          // get the returned position
+          const position = res.position as any;
 
-        // update the state
-        if (position) {
-          setLat(position.lat);
-          setLng(position.lng);
+          // update the state
+          if (position) {
+            setLat(position.lat);
+            setLng(position.lng);
+          }
         }
-      }
-    });
+      },
+      'mapWM',
+    );
   }, []);
 
   return (
