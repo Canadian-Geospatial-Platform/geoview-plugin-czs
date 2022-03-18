@@ -2,15 +2,15 @@ import React, { useEffect } from 'react';
 
 import { makeStyles } from '@material-ui/core/styles';
 
-import { MapPosition } from './MapPosition';
+import { ClipZipShip } from './ClipZipShip';
 
 /**
- * main container and map styling
+ * Main container and map styling
  */
 const useStyles = makeStyles((theme) => ({
   container: {
     height: '100%',
-  },
+  }
 }));
 
 // get reference to window object
@@ -25,6 +25,8 @@ const cgpv = w['cgpv'];
  * @returns {JSX.Elemet} the element that creates the container and the map
  */
 const App = (): JSX.Element => {
+
+  // Get the classes for the styles
   const classes = useStyles();
 
   /**
@@ -41,20 +43,39 @@ const App = (): JSX.Element => {
        * Second parameter is the component to add, this can be a react component written in JSX
        * or HTML created using React.createElement
        */
-      cgpv.api.map('mapWM').addComponent('text', <MapPosition />);
+      cgpv.api.map('mapWM').addComponent('czs_comp', <ClipZipShip />);
+
+
+      const button = {
+          tooltip: 'Default',
+          icon: 'details',
+      };
+
+      const panel = {
+          title: 'Default',
+          icon: 'details',
+          content: '',
+          width: 200,
+      };
     });
+
+
+    function addVectorMarkers(mapViewer) {
+      mapViewer.layer.vector.addCircleMarker(56, -97, { radius: 1 }, 'CircleMarker-1');
+      mapViewer.layer.vector.addCircle(57.7, -99, { radius: 10 }, 'Circle-1');
+    }
+
   }, []);
 
   return (
     <div className={classes.container}>
-      <div>Test loading map from an external package</div>
       <div
         id="mapWM"
         className="llwp-map"
         style={{
-          height: '500px',
+          height: '100%',
         }}
-        data-leaflet="{ 'name': 'Web Mercator', 'projection': 3857, 'zoom': 4, 'center': [60,-100], 'language': 'en-CA', 'basemapOptions': { 'id': 'transport', 'shaded': false, 'labeled': true }, 'layers': [] } "
+        data-leaflet="{ 'name': 'Clip Zip Ship Map', 'projection': 3978, 'zoom': 13, 'center': [53.54, -113.35], 'language': 'en-CA', 'basemapOptions': { 'id': 'transport', 'shaded': false, 'labeled': true }, 'layers': [], 'extraOptions': { 'editable': true } }"
       ></div>
     </div>
   );

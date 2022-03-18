@@ -1,5 +1,6 @@
 {
   "custom": {
-    "mapPosition": "Localisation sur la carte"
+    "mapPosition": "Localisation sur la carte",
+    "clipZipShip": "Définir Découper Envoyer"
   }
 }
