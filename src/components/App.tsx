@@ -36,35 +36,30 @@ const App = (): JSX.Element => {
     cgpv.init(() => {
       // create a new component on the leaflet map after it has been rendered
 
-      /**
-       * First parameter is the id of that new component
-       * the id can be used to remove the added component using the .removeComponent(id) function
-       *
-       * Second parameter is the component to add, this can be a react component written in JSX
-       * or HTML created using React.createElement
-       */
-      cgpv.api.map('mapWM').addComponent('czs_comp', <ClipZipShip />);
 
+      // Some variables
+      const mapId = "mapWM";
 
-      const button = {
-          tooltip: 'Default',
-          icon: 'details',
-      };
+      // Get the Map instance
+      const mapInstance = cgpv.api.map(mapId);
 
-      const panel = {
-          title: 'Default',
-          icon: 'details',
-          content: '',
-          width: 200,
-      };
+      // Button props
+      const button = mapInstance.getButtonProps("clipZipShipButton", "Clip Zip Ship", "dynamic_form" );
+
+      // Panel props
+      const panel = mapInstance.getPanelProps("clipZipShipPanel", "Clip Zip Ship", "dynamic_form")
+
+      // Create a new button panel on the appbar
+      const buttonPanel = cgpv.api.map(mapId).appBarButtons.createAppbarPanel(button, panel, null);
+
+      // Set panel content
+      buttonPanel.panel?.changeContent(
+        <ClipZipShip></ClipZipShip>
+      );
+
+      // Load the layers panel plugin
+      cgpv.api.addPlugin('layersPanel', mapId, w.plugins['layersPanel'], { mapId: mapId });
     });
-
-
-    function addVectorMarkers(mapViewer) {
-      mapViewer.layer.vector.addCircleMarker(56, -97, { radius: 1 }, 'CircleMarker-1');
-      mapViewer.layer.vector.addCircle(57.7, -99, { radius: 10 }, 'Circle-1');
-    }
-
   }, []);
 
   return (
@@ -75,7 +70,46 @@ const App = (): JSX.Element => {
         style={{
           height: '100%',
         }}
-        data-leaflet="{ 'name': 'Clip Zip Ship Map', 'projection': 3978, 'zoom': 13, 'center': [53.54, -113.35], 'language': 'en-CA', 'basemapOptions': { 'id': 'transport', 'shaded': false, 'labeled': true }, 'layers': [], 'extraOptions': { 'editable': true } }"
+        data-leaflet="{
+          'name': 'Clip Zip Ship Map',
+          'zoom': 13,
+          'projection': 3978,
+          'center': [53.54, -113.35],
+          'language': 'en-CA',
+          'basemapOptions': {
+            'id': 'transport',
+            'shaded': false,
+            'labeled': true
+          },
+          'layers': [{
+            'id':'wmsLYR1',
+            'name': 'Première Nation / First Nation',
+            'url': 'https://services.aadnc-aandc.gc.ca/geomatics/services/Donnees_Ouvertes-Open_Data/Premiere_Nation_First_Nation/MapServer/WMSServer',
+            'type': 'ogcWMS',
+            'entries': '0'
+          },{
+            'id':'wmsLYR2',
+            'name': 'Energy Dynamic',
+            'url': 'https://geoappext.nrcan.gc.ca/arcgis/rest/services/NACEI/energy_infrastructure_of_north_america_en/MapServer',
+            'type': 'esriDynamic',
+            'entries': '4, 5, 10'
+          },{
+            'id':'wmsLYR3',
+            'name': 'Energy Feature',
+            'url': 'https://geoappext.nrcan.gc.ca/arcgis/rest/services/NACEI/energy_infrastructure_of_north_america_en/MapServer/1',
+            'type': 'esriFeature'
+          },{
+            'id':'wmsLYR4',
+            'name': 'Topographic OSM WMS',
+            'url': 'https://maps-cartes.services.geo.ca/server_serveur/services/NRCan/CanEcumeneV2_en/MapServer/WMSServer',
+            'type': 'ogcWMS',
+            'entries': '0,1,2,3,4,5,6,7,8,9'
+          }],
+          'extraOptions': {
+            'editable': true
+          },
+          'plugins': []
+        }"
       ></div>
     </div>
   );
