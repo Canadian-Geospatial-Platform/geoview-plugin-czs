@@ -57,7 +57,7 @@ export function FeaturesList(props: FeaturesListProps): JSX.Element {
             ))}
           </tr>
           </thead>
-          <tbody>
+          <tbody key={feat.collection}>
             {Object.values(feat.features).map((f) => (
               <tr key={f.properties.id}
                   onMouseOver={(e) => hoverOnCallback(f)}

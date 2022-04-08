@@ -145,7 +145,7 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
 
   // State used to store latitude and longtitude after map drag end
   const [collections, _setCollections] = useState([]);  // TODO: BE ABLE TO DO useState<> using react from core!?
-  const [checkedCollections, _setCheckedCollections] = useState([]);
+  const [checkedCollections, _setCheckedCollections] = useState({});
   const [featuresCollections, _setFeaturesCollections] = useState([]);
 
   // Show a loading spinner when collections are being loaded
@@ -188,22 +188,16 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
   }
 
   function onStartDrawing(rectangle: boolean): void {
-    // Crosshair cursor
-    L.DomUtil.addClass(mapInstance.map._container,'crosshair-cursor-enabled');
-
     // Emit that started drawing
     api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_STARTED, mapId, {
       rectangle: rectangle
     });
   }
 
-  function onCollectionCheckedChanged(themeColl: Array<ThemeCollections>, checkedColls: Array<string>): void {
-    debugger;
-    // Proceed to change the state
-    _setCheckedCollections(checkedColls);
-
+  function onCollectionCheckedChanged(themeColl: ThemeCollections, checkedColls: Array<string>): void {
     // Emit that the selected collections changed
     api.event.emit(CLIP_ZIP_SHIP_COLLECTIONS_CHANGED, mapId, {
+      themeCollection: themeColl,
       collections: checkedColls
     });
   };
@@ -266,7 +260,7 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
         let features: Array<FeatureCollectionItem> = [];
         payload.data.map((featColl: PyGeoAPIFeaturesResponsePayload) => {
           // If a feature collection
-          console.log("FEATURE", featColl);
+          console.log("FEATURES", featColl);
           
           if (featColl.data.type == "FeatureCollection") {
             let value: FeatureCollectionItem = {
@@ -343,27 +337,25 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
         </Button>
       </div>
       {Object.values(collections).map((thmColl) => (
-        <div>
-          <Accordion
-            items={
-              [{
-                title: thmColl.theme + " (" + thmColl.collections.length + ")",
-                content: <CheckboxList
-                    multiselect={true}
-                    listItems={Object.values(thmColl.collections).map((coll) => {
-                      return {
-                        display: coll.name,
-                        value: coll.id
-                      };
-                    })}
-                    checkedValues={checkedCollections}
-                    checkedCallback={(e: Array<string>) => onCollectionCheckedChanged(thmColl, e)}>
-                  </CheckboxList>
-              }]
-            }>
-          </Accordion>
-         </div>
-        ))}
+        <Accordion
+          items={
+            [{
+              title: thmColl.theme.name + " (" + thmColl.collections.length + ")",
+              content: <CheckboxList
+                  multiselect={true}
+                  listItems={Object.values(thmColl.collections).map((coll) => {
+                    return {
+                      display: coll.name,
+                      value: coll.id
+                    };
+                  })}
+                  checkedValues={checkedCollections[thmColl.theme.id] || []}
+                  checkedCallback={(e: Array<string>) => onCollectionCheckedChanged(thmColl, e)}>
+                </CheckboxList>
+            }]
+          }>
+        </Accordion>
+      ))}
       <div className={`${classes.collectionsClass}`}>Features:</div>
       <div>
         <FeaturesList

@@ -20,10 +20,11 @@ export type GeometryPayload = {
   layer: L.Layer;
 };
 
-export type PyGeoAPICollectionResponsePayload = {
-  //collection: string;
-  //type: string;
-  //data: object;
+export type PyGeoAPICollectionsResponsePayload = {
+  collection: string;
+  displayName: string;
+  theme: string;
+  type: string;
 };
 
 export type PyGeoAPIFeaturesResponsePayload = {
@@ -63,7 +64,7 @@ export class ClipZipShipAPI {
   clipLayer?: L.Layer;
   clipGeometryBBoxLCCFlat: Array<number> = [];
   themeColls: Array<ThemeCollections> = [];
-  checkedCollections: Array<string> = [];
+  checkedCollections: object = {};
   doubleClickZoomEnabled: boolean = false;
 
   
@@ -100,6 +101,10 @@ export class ClipZipShipAPI {
       (payload: any) => {
         //console.log("HANDLE API : CLIP_ZIP_SHIP_GEOMETRY_STARTED", payload.geometry);
         
+        // Crosshair cursor
+        L.DomUtil.addClass(this.mapInstance.map._container,'crosshair-cursor-enabled');
+
+        // Keep flag is started drawing a rectangle
         this.clipGeometryIsRectangle = payload.rectangle;
 
         // Make sure the double click to zoom is disabled
@@ -113,9 +118,9 @@ export class ClipZipShipAPI {
     this.cgpv.api.event.on(
       CLIP_ZIP_SHIP_COLLECTIONS_CHANGED,
       (payload: any) => {
-        console.log("HANDLE API : CLIP_ZIP_SHIP_COLLECTIONS_CHANGED", payload.collections);
+        //console.log("HANDLE API : CLIP_ZIP_SHIP_COLLECTIONS_CHANGED", payload.collections);
 
-        this.checkedCollections = payload.collections;
+        this.checkedCollections[payload.themeCollection.theme.id] = payload.collections;
         this.startFindingFeatures(this.clipGeometryBBoxLCCFlat);
       },
       mapId
@@ -273,20 +278,23 @@ export class ClipZipShipAPI {
     });
 
     // Get the collections for the bounding box
-    this.mapInstance.getCollections(this.urlClip, geom).then((colls: Array<object>) => {
+    this.mapInstance.getCollections(this.urlClip, geom).then((colls: Array<PyGeoAPICollectionsResponsePayload>) => {
       // Only keep Feature types
       
       // Group the collections by themes
       this.themeColls = [];
-      colls.forEach((collection) => {
+      colls.forEach((collection: PyGeoAPICollectionsResponsePayload) => {
         // Find the theme
         let thmColl = this.themeColls.find((thmCol) => {
-          return thmCol.theme == collection.theme;
+          return thmCol.theme.id == collection.theme;
         });
 
         // If not found
         if (!thmColl) {
-          thmColl = new ThemeCollections(collection.theme, []);
+          thmColl = new ThemeCollections({
+            id:collection.theme,
+            name: collection.theme
+          }, []);
           this.themeColls.push(thmColl);
         }
 
@@ -309,6 +317,9 @@ export class ClipZipShipAPI {
         checkedCollections: this.checkedCollections
       });
 
+      // Flush all geometries from vector geometries (just in case)
+      this.mapInstance.layer.vector.deleteGeometriesFromGroup(GEOMETRY_GROUP_HOVER);
+
       // Update Graphics on Map based on UI
       this.findFeaturesPerCollection(geom);
     });
@@ -320,7 +331,7 @@ export class ClipZipShipAPI {
     this.themeColls.forEach((thmColl: ThemeCollections) => {
       // If the collection is in the list of checked collections
       thmColl.collections.forEach((coll: CollectionItem) => {
-        if (this.checkedCollections.includes(coll.id))
+        if (thmColl.theme.id in this.checkedCollections && this.checkedCollections[thmColl.theme.id].includes(coll.id))
           actualCollections.push(coll);
       });
     });
