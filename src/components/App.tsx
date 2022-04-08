@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 import { makeStyles } from '@material-ui/core/styles';
 
-import { ClipZipShip } from './ClipZipShip';
+import { ClipZipShipAPI } from './ClipZipShipAPI';
 
 /**
  * Main container and map styling
@@ -29,6 +29,8 @@ const App = (): JSX.Element => {
   // Get the classes for the styles
   const classes = useStyles();
 
+  let clipZipShipAPI = null;
+
   /**
    * initialize the map after it has been loaded
    */
@@ -36,12 +38,14 @@ const App = (): JSX.Element => {
     cgpv.init(() => {
       // create a new component on the leaflet map after it has been rendered
 
-
       // Some variables
-      const mapId = "mapWM";
+      const MAP_ID = "mapWM";
+      const URL_CLIP = "http://10.68.130.170:8080/processes/clip-process/execution";
+      const URL_EXTRACT = "http://10.68.130.170:8080/processes/extract-process/execution";
+
 
       // Get the Map instance
-      const mapInstance = cgpv.api.map(mapId);
+      const mapInstance = cgpv.api.map(MAP_ID);
 
       // Button props
       const button = mapInstance.getButtonProps("clipZipShipButton", "Clip Zip Ship", "dynamic_form" );
@@ -50,15 +54,19 @@ const App = (): JSX.Element => {
       const panel = mapInstance.getPanelProps("clipZipShipPanel", "Clip Zip Ship", "dynamic_form")
 
       // Create a new button panel on the appbar
-      const buttonPanel = cgpv.api.map(mapId).appBarButtons.createAppbarPanel(button, panel, null);
+      const buttonPanel = cgpv.api.map(MAP_ID).appBarButtons.createAppbarPanel(button, panel, null);
+
+      // Create the ClipZipS
+      clipZipShipAPI = new ClipZipShipAPI(MAP_ID, URL_CLIP, URL_EXTRACT);
 
       // Set panel content
-      buttonPanel.panel?.changeContent(
-        <ClipZipShip></ClipZipShip>
-      );
+      buttonPanel.panel?.changeContent(clipZipShipAPI.clipZipShip);
+
+      // Open it by default
+      buttonPanel.panel?.open();
 
       // Load the layers panel plugin
-      cgpv.api.addPlugin('layersPanel', mapId, w.plugins['layersPanel'], { mapId: mapId });
+      cgpv.api.addPlugin('layersPanel', MAP_ID, w.plugins['layersPanel'], { mapId: MAP_ID });
     });
   }, []);
 
@@ -98,12 +106,6 @@ const App = (): JSX.Element => {
             'name': 'Energy Feature',
             'url': 'https://geoappext.nrcan.gc.ca/arcgis/rest/services/NACEI/energy_infrastructure_of_north_america_en/MapServer/1',
             'type': 'esriFeature'
-          },{
-            'id':'wmsLYR4',
-            'name': 'Topographic OSM WMS',
-            'url': 'https://maps-cartes.services.geo.ca/server_serveur/services/NRCan/CanEcumeneV2_en/MapServer/WMSServer',
-            'type': 'ogcWMS',
-            'entries': '0,1,2,3,4,5,6,7,8,9'
           }],
           'extraOptions': {
             'editable': true
@@ -113,6 +115,15 @@ const App = (): JSX.Element => {
       ></div>
     </div>
   );
+
+  /*{
+    'id':'wmsLYR4',
+    'name': 'Topographic OSM WMS',
+    'url': 'https://maps-cartes.services.geo.ca/server_serveur/services/NRCan/CanEcumeneV2_en/MapServer/WMSServer',
+    'type': 'ogcWMS',
+    'entries': '0,1,2,3,4,5,6,7,8,9'
+  }
+  */
 };
 
 export default App;

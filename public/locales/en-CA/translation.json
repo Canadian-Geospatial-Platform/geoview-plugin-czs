@@ -2,7 +2,8 @@
   "custom": {
     "mapPosition": "Map Position",
     "clipZipShip": "Clip Zip Ship",
-    "clipZipShipTooltip": "Draw a zone to extract",
-    "clickMe": "Click me"
+    "areaRectangle": "Draw a rectangle on the map",
+    "areaPolygon": "Draw a polygon on the map",
+    "areaMapExtent": "Set area using map extent"
   }
 }

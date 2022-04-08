@@ -2,7 +2,8 @@
   "custom": {
     "mapPosition": "Localisation sur la carte",
     "clipZipShip": "Définir Découper Envoyer",
-    "clipZipShipTooltip": "Définir une zone et extraire",
-    "clickMe": "Cliquez moi"
+    "areaRectangle": "Dessiner un rectangle sur la carte",
+    "areaPolygon": "Dessiner un polygone sur la carte",
+    "areaMapExtent": "Définir la région selon l'étendu cartographique"
   }
 }

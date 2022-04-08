@@ -19,7 +19,7 @@ td {
 }
 
 .map-container {
-    height: 800px;
+    /*height: 800px;*/
 }
 
 .panel {
@@ -70,8 +70,8 @@ td {
 }
 
 .llwp-map {
-    height: 800px;
-    max-height: 90vh;
+    /*height: 800px;
+    max-height: 90vh;*/
 }
 
 .legendTable {
@@ -85,10 +85,55 @@ td {
     margin-left: 60px !important;
 }
 
-.makeStyles-positionContainer-41 {
-    margin-left: 135px !important;
-}
-
 .leaflet-container.crosshair-cursor-enabled {
     cursor: crosshair !important;
 }
+
+.loading-spinner-container {
+    position: absolute;
+    top: 40px;
+    right: 40px;
+}
+
+.MuiPaper-root .MuiCardContent-root {
+    position: relative;
+}
+
+ul.MuiList-root li {
+    cursor: default;
+}
+
+.loading-spinner {
+    position: relative;
+    background-color: transparent !important;
+}
+
+.loading-spinner span {
+    width: 40px !important;
+    height: 40px !important;
+}
+
+.table-wrapper {
+    overflow: auto;
+    margin-bottom: 30px;
+}
+
+.table-wrapper table {
+    min-width: 100%;
+    border-spacing: 0px;
+}
+
+.table-wrapper tbody tr:hover {
+    background-color: lightgrey;
+}
+
+.table-wrapper tr th,
+.table-wrapper tr td { 
+    padding: 0px 20px;
+}
+
+.table-wrapper .czs-feat-collection {
+    height: 50px;
+    background-color: #808080;
+}
+

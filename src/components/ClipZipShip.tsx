@@ -1,37 +1,60 @@
-/**
- * IMPORTANT NOTE:
- * Because this is a component that will render on top of the GeoView viewer,
- * you will only be able to use hooks exported from the viewer. All react hooks
- * are exported by default. The reason for this is because this component will
- * render inside the viewer which already has a context, this component will be
- * injected to use that context. Using hooks created outside of the viewer will
- * create a new context and will not work.
- * See below for example of how hooks are imported from the viewer.
- */
-
-/**
- * When using a component that will render inside the GeoView map
- * React needs to be imported
- */
 import React from 'react';
 
 import translationEn from '../../public/locales/en-CA/translation.json';
 import translationFr from '../../public/locales/fr-CA/translation.json';
 
+import { ClipZipShipAPI,
+         CLIP_ZIP_SHIP_LOADING_SPINNER,
+         CLIP_ZIP_SHIP_LOADING_COLLECTIONS,
+         CLIP_ZIP_SHIP_LOADING_FEATURES,
+         PyGeoAPIFeaturesResponsePayload } from "./ClipZipShipAPI";
+import { FeaturesList, FeatureCollectionItem } from './FeaturesList';
+
+
 /**
- * Create a container that renders the map position after the mouse
- * drag on the map has ended
- *
- * @returns {JSX.Element} the map position container
+ * Type to create a ClipZipShip UI element
  */
-export const ClipZipShip = (): JSX.Element => {
+export type ClipZipShipProps = {
+  // ClipZipShip ID
+  id?: string;
+  mapId: string;
+};
+
+export class ThemeCollections {
+  theme: ThemeItem;
+  collections: Array<CollectionItem>;
+
+  constructor(theme: ThemeItem, collections: Array<CollectionItem>) {
+    this.theme = theme;
+    this.collections = collections;
+  }
+};
+
+export type ThemeItem = {
+  id: string;
+  name: string;
+};
+
+export type CollectionItem = {
+  id: string;
+  type: string;
+  name: string;
+};
 
 
-  // CONFIG
-  //const PYGEOAPI_ENDPOINT = "http://10.68.130.170:8080";
-  const URL_CLIP = "http://10.68.130.170:8080/processes/clip-process/execution";
-  const URL_EXTRACT = "http://10.68.130.170:8080/processes/extract-process/execution";
+// Events
+export const CLIP_ZIP_SHIP_GEOMETRY_STARTED: string = "CLIP_ZIP_SHIP_GEOMETRY_STARTED";
+export const CLIP_ZIP_SHIP_COLLECTIONS_CHANGED: string = "CLIP_ZIP_SHIP_COLLECTIONS_CHANGED";
+export const CLIP_ZIP_SHIP_FEATURE_HOVER_ON: string = "CLIP_ZIP_SHIP_FEATURE_HOVER_ON";
+export const CLIP_ZIP_SHIP_FEATURE_HOVER_OFF: string = "CLIP_ZIP_SHIP_FEATURE_HOVER_OFF";
 
+
+/**
+ * Create a ClipZipShip UI element
+ *
+ * @returns {JSX.Element} the Clip Zip Ship UI element
+ */
+export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
 
   // Get a reference to the windows object
   const w = window as any;
@@ -43,31 +66,33 @@ export const ClipZipShip = (): JSX.Element => {
   const cgpv = w['cgpv'];
 
   // Import exported modules from the viewer
-  const { api, react, ui, mui, useTranslation, leaflet } = cgpv;
+  const { api, react, ui, useTranslation } = cgpv;
+
+  //const { InputLabel, Select, MenuItem, FormControl, Box } = mui;
 
   /** Use react hooks, these hooks uses the viewer's context.
    *  Importing them from the react module at the top will not work.
    */
-  const { useState, useEffect, useRef } = react;
+  const { useState, useEffect } = react;
 
   // Get the leaflet dom event
-  const { DomEvent } = leaflet;
+  //const { DomEvent } = leaflet;
 
   // Import another hook used by material ui, again if you import it directly it won't work
   const { makeStyles } = ui;
 
   // Import the Button
-  const { Button } = ui.elements;
+  const { Button, CircularProgress, CheckboxList, Accordion } = ui.elements;
 
   // Get the translation object
   const { t } = useTranslation();
 
   // Some variables
-  const mapId = "mapWM";
+  const mapId = props.mapId;
 
   // Get the Map instance
   const mapInstance = api.map(mapId);
-  const { language } = mapInstance;
+  //const { language } = mapInstance;
 
   // Add custom languages
   mapInstance.i18nInstance.addResourceBundle(
@@ -85,241 +110,208 @@ export const ClipZipShip = (): JSX.Element => {
     false,
   );
 
-  
-
-  // State used to store latitude and longtitude after map drag end
-  const [lat, setLat] = useState(0);
-  const [lng, setLng] = useState(0);
-  const [zoom, setZoom] = useState(0);
-  const [collections, setCollections] = useState([]);
-  //const [mapLayers, setMapLayers] = useState({});
-
-  // ??
-  //const positionContainerRef = useRef();
-
   // Style the ClipZipShip
   const useStyles = makeStyles((theme: any) => ({
     buttonsContainer: {
       display: "flex",
       flexDirection: "row",
+      "margin-bottom": "20px"
     },
     
     buttonClass: {
       width: 50,
       minWidth: 50,
+      'margin-right': 10,
       "& > div": {
         textAlign: "center",
       }
     },
 
-    listCollections: {
-      'padding-inline-start': 0,
+    collectionsClass: {
+      'margin-block-start': '1em'
     },
+
+    listCollections: {
+      'padding-inline-start': 0
+    },
+
+    deprecatedInfo: {
+      display: 'none'
+    }
   }));
 
   // Get the classes for the styles
   const classes = useStyles();
 
-  // The current bounds
-  let currentLayer: L.Layer = null;
-  let currentGeometry: object = null;
-  let doubleClickZoomEnabled: boolean = false;
-  let drawingRectangle: boolean = false;
+  // State used to store latitude and longtitude after map drag end
+  const [collections, _setCollections] = useState([]);  // TODO: BE ABLE TO DO useState<> using react from core!?
+  const [checkedCollections, _setCheckedCollections] = useState([]);
+  const [featuresCollections, _setFeaturesCollections] = useState([]);
 
-
-   
-
-
-  // The essential function
-  function processGeometryComplete(geom) {
-    // Reset the cursor
-    L.DomUtil.removeClass(mapInstance.map._container,'crosshair-cursor-enabled');
-
-    // Flush all geometries from vector geometries
-    mapInstance.layer.vector.deleteGeometriesFromGroup(mapInstance.layer.vector.getActiveGeometryGroup().id);
-
-    // Create the bbox as defined from the current shape
-    let bbox = [[geom._southWest.lng, geom._southWest.lat], [geom._northEast.lng, geom._northEast.lat]];
-
-    // Project to LCC
-    let bboxLCC = mapInstance.projection.latLngToLCC(bbox);
-
-    // If the bounding box in lat is higher in the south west than on the north east, reverse them values
-    if (bboxLCC[0][1] > bboxLCC[1][1]) {
-      let temp = bboxLCC[0][1];
-      bboxLCC[0][1] = bboxLCC[1][1];
-      bboxLCC[1][1] = temp;
-    }
-
-    // Flatten them
-    let bboxLLCFlat: Array<number> = [];
-    bboxLCC.forEach((r: Array<number>) => {
-      // Add the 2 coordinates to the flat array
-      bboxLLCFlat.push(r[0], r[1]);
-    });
-
-    //bboxLLCFlat = [-1176630, 702440, -1175670, 703700]; // 1
-    //bboxLLCFlat = [-1176630, 692440, -1175670, 693700]; // 2
-    //bboxLLCFlat = [-1176630, 682440, -1175670, 683700]; // 3
-
-    console.log("BBOX", bboxLLCFlat);
-
-    // Get the collections for the bounding box
-    mapInstance.getCollections(URL_CLIP, bboxLLCFlat).then((colls: Array<object>) => {
-      // Only keep Feature types
-      colls = colls.filter((coll) => {
-        return coll.Type == "Feature";
-      });
-
-      const items = colls.map((coll, idx) => {
-        return <li key={coll.collectionId} data-id={coll.collectionId}>{coll.collectionId}</li>;
-      });
-
-      // Update UI
-      setCollections(items);
-
-      // For each collection id
-      let promises: Array<Array<object>> = [];
-      colls.forEach((coll) => {
-        // Get the features
-        promises.push(mapInstance.getFeatures(URL_EXTRACT, coll.collectionId, bboxLLCFlat));
-      });
-
-      // Once all queries have completed
-      Promise.all(promises).then((featureColls: Array<Array<object>>) => {
-        //console.log("Feature Colls", featureColls)
-
-        // For each feature collections
-        featureColls.forEach((features) => {
-          // For each feature
-          let addedGeometry: object = null;
-          features.forEach((feat) => {
-            if (feat.geometry) {
-              if (feat.geometry.type == "MultiLineString") {
-                // Project to lat long
-                let geom: Array<Array<Array<number>>> = [];
-                feat.geometry.coordinates.forEach((r: Array<number>) => {
-                  // Project to lat long
-                  geom.push(mapInstance.projection.lccToLatLng(r));
-                });
-
-                // Reverse the array because they are x, y instead of default lat long couple y, x
-                geom.forEach((r: Array<Array<number>>) => {
-                  r.forEach((r2: Array<number>) => {
-                    // Reverse the coordinates
-                    r2.reverse();
-                  })
-                });
-
-                // Add the polyline on the map
-                addedGeometry = mapInstance.layer.vector.addPolyline(geom);
-              }
-
-              else if (feat.geometry.type == "Point") {
-                // Project to lat long
-                let geom: Array<number> = [];
-                geom.push(mapInstance.projection.lccToLatLng(feat.geometry.coordinates));
-                
-                // Add the marker on the map
-                addedGeometry = mapInstance.layer.vector.addMarker(geom[0][0][1], geom[0][0][0]);
-              }
-            }
-          });
-        });
-      });
-    });
-  }
-
+  // Show a loading spinner when collections are being loaded
+  const [isLoading, _setIsLoading] = useState(false);
+  
   function btnClickDrawRectangle(): void {
-    doubleClickZoomEnabled = mapInstance.map.doubleClickZoom._enabled;
-    drawingRectangle = true;
     mapInstance.map.editTools.startRectangle();
-    L.DomUtil.addClass(mapInstance.map._container,'crosshair-cursor-enabled');
+    onStartDrawing(true);
   }
 
   function btnClickDrawPolygon(): void {
-    doubleClickZoomEnabled = mapInstance.map.doubleClickZoom._enabled;
-    drawingRectangle = false;
     mapInstance.map.editTools.startPolygon();
-    L.DomUtil.addClass(mapInstance.map._container,'crosshair-cursor-enabled');
+    onStartDrawing(false); 
   }
+
+  function btnClickUseMapExtent(): void {
+    // Get extent
+    let bounds: L.Bounds = mapInstance.map.getBounds();
+    
+    // Get coordinates array
+    let coordinates: Array<Array<number>> = [[bounds.getSouth(), bounds.getWest()],
+                                             [bounds.getNorth(), bounds.getWest()],
+                                             [bounds.getNorth(), bounds.getEast()],
+                                             [bounds.getSouth(), bounds.getEast()]];
+
+    // Create the polygon
+    let polygon: L.polygon = L.polygon(coordinates);
+
+    // Add it to the map
+    polygon.addTo(mapInstance.map);
+    
+    // Make the polygon editable
+    polygon.enableEdit();
+
+    // Started "drawing"
+    onStartDrawing(false);
+
+    // Commit right away
+    polygon.editor.commitDrawing(polygon);
+  }
+
+  function onStartDrawing(rectangle: boolean): void {
+    // Crosshair cursor
+    L.DomUtil.addClass(mapInstance.map._container,'crosshair-cursor-enabled');
+
+    // Emit that started drawing
+    api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_STARTED, mapId, {
+      rectangle: rectangle
+    });
+  }
+
+  function onCollectionCheckedChanged(themeColl: Array<ThemeCollections>, checkedColls: Array<string>): void {
+    debugger;
+    // Proceed to change the state
+    _setCheckedCollections(checkedColls);
+
+    // Emit that the selected collections changed
+    api.event.emit(CLIP_ZIP_SHIP_COLLECTIONS_CHANGED, mapId, {
+      collections: checkedColls
+    });
+  };
+
+  function onFeatureHoverOn(feature: object): void {
+    // Emit that the geometry changed
+    api.event.emit(CLIP_ZIP_SHIP_FEATURE_HOVER_ON, mapId, {
+      feature: feature
+    });
+  };
+
+  function onFeatureHoverOff(feature: object): void {
+    // Emit that the geometry changed
+    api.event.emit(CLIP_ZIP_SHIP_FEATURE_HOVER_OFF, mapId, {
+      feature: feature
+    });
+  };
 
   // Render
   useEffect(() => {
 
-    // Listen to the map drawing commit
-    mapInstance.map.on('editable:drawing:commit', function (e) {
-      console.log("editable:drawing:commit", e.layer.editor.feature);
+    // Listen to the clip zip ship loading event
+    api.event.on(
+      CLIP_ZIP_SHIP_LOADING_SPINNER,
+      (payload: any) => {
+        //console.log("HANDLE ELEMENT : CLIP_ZIP_SHIP_LOADING_SPINNER");
+        _setIsLoading(payload.isLoading);
+      },
+      mapId
+    );
 
-      // If there was already a layer that was used to draw
-      if (currentLayer)
-        currentLayer.removeFrom(mapInstance.map);
-      
-      // If drawing a rectangle, don't bother here, wait for editable:dragend event to do stuff
-      if (drawingRectangle) return;
+    // Listen to the clip zip ship loading collections event
+    api.event.on(
+      CLIP_ZIP_SHIP_LOADING_COLLECTIONS,
+      (payload: any) => {
+        //console.log("HANDLE ELEMENT : CLIP_ZIP_SHIP_LOADING_COLLECTIONS", payload.collections, payload.checkedCollections);
+        
+        // Set the collections
+        if (payload.collections) {
+          // Proceed to change the state
+          _setCollections(payload.collections);
+        }
 
-      // Update current variables
-      currentLayer = e.layer;
-      currentGeometry = e.layer.editor.feature;
+        // Set the checked collections
+        if (payload.checkedCollections) {
+          // Proceed to change the state
+          _setCheckedCollections(payload.checkedCollections);
+        }
+      },
+      mapId
+    );
 
-      // Start processing the geometry
-      processGeometryComplete(currentGeometry.getBounds());
-    });
+    // Listen to the clip zip ship loading features event
+    api.event.on(
+      CLIP_ZIP_SHIP_LOADING_FEATURES,
+      (payload: Array<PyGeoAPIFeaturesResponsePayload>) => {
+        //console.log("HANDLE ELEMENT : CLIP_ZIP_SHIP_LOADING_FEATURES", payload.features);
 
-    // Listen to the map drag commit
-    mapInstance.map.on('editable:dragend editable:vertex:dragend', function (e) {
-      console.log("editable:dragend editable:vertex:dragend", e.layer.editor.feature);
+        // Build
+        let features: Array<FeatureCollectionItem> = [];
+        payload.data.map((featColl: PyGeoAPIFeaturesResponsePayload) => {
+          // If a feature collection
+          console.log("FEATURE", featColl);
+          
+          if (featColl.data.type == "FeatureCollection") {
+            let value: FeatureCollectionItem = {
+              collection: featColl.collection,
+              attributes: ["id", "province", "location", "project_name", "capital_cost"],
+              features: featColl.data.features
+            };
+            features.push(value);
+          }
 
-      // If currently drawing
-      if (mapInstance.map.editTools.drawing()) return;
+          else if (featColl.data.type == "Coverage") {
+            let value: FeatureCollectionItem = {
+              collection: featColl.collection,
+              attributes: ["pixel_count"],
+              features: [{
+                properties: {
+                  pixel_count: featColl.data.cntPixel
+                }
+              }]
+            };
+            features.push(value);
+          }
+        });
 
-      // Update current variables
-      currentLayer = e.layer;
-      currentGeometry = e.layer.editor.feature;
-      drawingRectangle = false;
-
-      // Start processing the geometry
-      processGeometryComplete(currentGeometry.getBounds());
-    });
-
-    // Listen to the map click event
-    mapInstance.map.on('click', (e: any) => {
-      // Update the state
-      if (e.latlng) {
-        setLat(e.latlng.lat);
-        setLng(e.latlng.lng);
-        setZoom(e.target.getZoom());
-      }
-    });
-
-    // Listen to the map click event
-    mapInstance.map.on('click', (e: any) => {
-      // If currently drawing
-      if (mapInstance.map.editTools.drawing()) {
-        // Make sure the double click to zoom is disabled
-        mapInstance.map.doubleClickZoom.disable();
-        return;
-      }
-
-      console.log("mapInstance.click");
-
-      // If the double click zoom was enabled when the tool was activated
-      if (doubleClickZoomEnabled) {
-        // Make sure the double click to zoom is reenabled
-        mapInstance.map.doubleClickZoom.enable();
-      }
-    });
-
+        // Proceed to change the state
+        _setFeaturesCollections(features);
+      },
+      mapId
+    );
   }, []);
-
 
   return (
     <div>
+      <div className='loading-spinner-container'>
+        <CircularProgress
+          isLoaded={!isLoading}
+          className='loading-spinner'
+        />
+      </div>
+      <div>Area:</div>
       <div className={`${classes.buttonsContainer}`}>
         <Button
           id="btnRectangle"
           className={`${classes.buttonClass}`}
-          tooltip="Drawing a rectangle on the map"
+          tooltip={t('custom.areaRectangle')}
           tooltipPlacement="top"
           variant="contained"
           type="icon"
@@ -330,7 +322,7 @@ export const ClipZipShip = (): JSX.Element => {
         <Button
           id="btnPolygon"
           className={`${classes.buttonClass}`}
-          tooltip="Drawing a polygon on the map"
+          tooltip={t('custom.areaPolygon')}
           tooltipPlacement="top"
           variant="contained"
           type="icon"
@@ -338,14 +330,47 @@ export const ClipZipShip = (): JSX.Element => {
           onClick={btnClickDrawPolygon}
           >
         </Button>
+        <Button
+          id="btnPolygon"
+          className={`${classes.buttonClass}`}
+          tooltip={t('custom.areaMapExtent')}
+          tooltipPlacement="top"
+          variant="contained"
+          type="icon"
+          icon='<i class="material-icons">visibility</i>'
+          onClick={btnClickUseMapExtent}
+          >
+        </Button>
       </div>
-      <p>Collections:</p>
-      <ol>{collections}</ol>
-      <hr></hr>
+      {Object.values(collections).map((thmColl) => (
+        <div>
+          <Accordion
+            items={
+              [{
+                title: thmColl.theme + " (" + thmColl.collections.length + ")",
+                content: <CheckboxList
+                    multiselect={true}
+                    listItems={Object.values(thmColl.collections).map((coll) => {
+                      return {
+                        display: coll.name,
+                        value: coll.id
+                      };
+                    })}
+                    checkedValues={checkedCollections}
+                    checkedCallback={(e: Array<string>) => onCollectionCheckedChanged(thmColl, e)}>
+                  </CheckboxList>
+              }]
+            }>
+          </Accordion>
+         </div>
+        ))}
+      <div className={`${classes.collectionsClass}`}>Features:</div>
       <div>
-        <p>Latitude: {lat}</p>
-        <p>Longitude: {lng}</p>
-        <p>Zoom: {zoom}</p>
+        <FeaturesList
+          featuresCollections={featuresCollections}
+          hoverOnCallback={onFeatureHoverOn}
+          hoverOutCallback={onFeatureHoverOff}
+        ></FeaturesList>
       </div>
     </div>
   );

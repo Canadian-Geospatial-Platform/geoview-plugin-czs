@@ -1,0 +1,8 @@
+{
+    "custom": {
+        "mapPosition": "Map Position",
+        "clipZipShip": "Clip Zip Ship",
+        "clipZipShipTooltip": "Draw a zone to extract",
+        "clickMe": "Click me"
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "custom": {
+        "mapPosition": "Localisation sur la carte",
+        "clipZipShip": "Définir Découper Envoyer",
+        "clipZipShipTooltip": "Définir une zone et extraire",
+        "clickMe": "Cliquez moi"
+    }
+}
