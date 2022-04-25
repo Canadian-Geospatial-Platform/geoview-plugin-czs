@@ -5,6 +5,7 @@ import translationFr from '../../public/locales/fr-CA/translation.json';
 
 import { ClipZipShipAPI,
          CLIP_ZIP_SHIP_LOADING_SPINNER,
+         CLIP_ZIP_SHIP_GEOMETRY_CHANGED,
          CLIP_ZIP_SHIP_LOADING_COLLECTIONS,
          CLIP_ZIP_SHIP_LOADING_FEATURES,
          PyGeoAPIFeaturesResponsePayload } from "./ClipZipShipAPI";
@@ -23,11 +24,18 @@ export type ClipZipShipProps = {
 export class ThemeCollections {
   theme: ThemeItem;
   collections: Array<CollectionItem>;
+  stacItems: Array<StacItem>;
 
-  constructor(theme: ThemeItem, collections: Array<CollectionItem>) {
+  constructor(theme: ThemeItem, collections: Array<CollectionItem>, stacItems: Array<StacItem>) {
     this.theme = theme;
     this.collections = collections;
+    this.stacItems = stacItems;
   }
+};
+
+export type CheckedCollItem = {
+  collections: Array<string>;
+  stacItem?: StacItem;
 };
 
 export type ThemeItem = {
@@ -41,10 +49,17 @@ export type CollectionItem = {
   name: string;
 };
 
+export type StacItem = {
+  id: string;
+  assets: Array<string>;
+};
+
 
 // Events
 export const CLIP_ZIP_SHIP_GEOMETRY_STARTED: string = "CLIP_ZIP_SHIP_GEOMETRY_STARTED";
+export const CLIP_ZIP_SHIP_GEOMETRY_CONFIRM: string = "CLIP_ZIP_SHIP_GEOMETRY_CONFIRM";
 export const CLIP_ZIP_SHIP_COLLECTIONS_CHANGED: string = "CLIP_ZIP_SHIP_COLLECTIONS_CHANGED";
+export const CLIP_ZIP_SHIP_FIND_FEATURES: string = "CLIP_ZIP_SHIP_FIND_FEATURES";
 export const CLIP_ZIP_SHIP_FEATURE_HOVER_ON: string = "CLIP_ZIP_SHIP_FEATURE_HOVER_ON";
 export const CLIP_ZIP_SHIP_FEATURE_HOVER_OFF: string = "CLIP_ZIP_SHIP_FEATURE_HOVER_OFF";
 
@@ -102,6 +117,7 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
     true,
     false,
   );
+
   mapInstance.i18nInstance.addResourceBundle(
     'fr-CA',
     'translation',
@@ -147,6 +163,7 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
   const [collections, _setCollections] = useState([]);  // TODO: BE ABLE TO DO useState<> using react from core!?
   const [checkedCollections, _setCheckedCollections] = useState({});
   const [featuresCollections, _setFeaturesCollections] = useState([]);
+  const [aoiConfirm, _setAOIConfirm] = useState(false);
 
   // Show a loading spinner when collections are being loaded
   const [isLoading, _setIsLoading] = useState(false);
@@ -187,6 +204,17 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
     polygon.editor.commitDrawing(polygon);
   }
 
+  function btnClickConfirmAOI(): void {
+    // Emit that the selected collections changed
+    api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_CONFIRM, mapId, {});
+    _setAOIConfirm(true);
+  }
+
+  function btnClickFindFeatures(): void {
+   // Emit that the selected collections changed
+    api.event.emit(CLIP_ZIP_SHIP_FIND_FEATURES, mapId, {}); 
+  }
+
   function onStartDrawing(rectangle: boolean): void {
     // Emit that started drawing
     api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_STARTED, mapId, {
@@ -194,11 +222,20 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
     });
   }
 
-  function onCollectionCheckedChanged(themeColl: ThemeCollections, checkedColls: Array<string>): void {
+  function getAOIConfirmClass(conf: boolean) {
+    if (conf)
+      return "Mui-disabled confirmed";
+    return "unconfirmed";
+  }
+
+  function onCollectionCheckedChanged(themeColl: ThemeCollections, stacItem: StacItem, value: string, checked: boolean, checkedValues: Array<string>): void {
     // Emit that the selected collections changed
     api.event.emit(CLIP_ZIP_SHIP_COLLECTIONS_CHANGED, mapId, {
       themeCollection: themeColl,
-      collections: checkedColls
+      stacItem: stacItem,
+      value: value,
+      checked: checked,
+      checkedValues: checkedValues
     });
   };
 
@@ -225,6 +262,16 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
       (payload: any) => {
         //console.log("HANDLE ELEMENT : CLIP_ZIP_SHIP_LOADING_SPINNER");
         _setIsLoading(payload.isLoading);
+      },
+      mapId
+    );
+
+    // Listen to the clip zip ship geometry changed event
+    api.event.on(
+      CLIP_ZIP_SHIP_GEOMETRY_CHANGED,
+      (payload: any) => {
+        //console.log("HANDLE ELEMENT : CLIP_ZIP_SHIP_GEOMETRY_CHANGED");
+        _setAOIConfirm(false);
       },
       mapId
     );
@@ -292,6 +339,63 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
     );
   }, []);
 
+
+  function writeTitle(thmColl: ThemeCollections) {
+    // If theme collection is stac
+    if (thmColl.stacItems && thmColl.stacItems.length > 0)
+      return thmColl.theme.name + " (" + thmColl.stacItems.length + ")";
+
+    else
+      return thmColl.theme.name + " (" + thmColl.collections.length + ")";
+  }
+
+  function writeContent(thmColl: ThemeCollections) {
+    // If a regular feature/coverage collection
+    if (thmColl.collections && thmColl.collections.length > 0) {
+      return <CheckboxList
+          key={"checklist-" + thmColl.theme.id}
+          multiselect={true}
+          listItems={Object.values(thmColl.collections).map((coll) => {
+          return {
+            display: coll.name,
+            value: coll.id
+          };
+        })}
+        checkedValues={(thmColl.theme.id in checkedCollections && checkedCollections[thmColl.theme.id].featureColl) || []}
+        checkedCallback={(value: string, checked: boolean, allChecked: Array<string>) => onCollectionCheckedChanged(thmColl, null, value, checked, allChecked)}
+      ></CheckboxList>;
+    }
+
+    else if (thmColl.stacItems && thmColl.stacItems.length > 0) {
+      return thmColl.stacItems.map((stacItem: StacItem) => {
+         return <Accordion
+            key={stacItem.id}
+            className={"accordion-stac"}
+            items={
+              [{
+                title: stacItem.id,
+                content: <CheckboxList
+                  key={"checklist-" + stacItem.id}
+                  multiselect={true}
+                  listItems={Object.keys(stacItem.assets).map((ass: string) => {
+                    return {
+                      display: stacItem.assets[ass].description,
+                      value: ass
+                    };
+                  })}
+                  checkedValues={(thmColl.theme.id in checkedCollections && stacItem.id in checkedCollections[thmColl.theme.id].stacColl && checkedCollections[thmColl.theme.id].stacColl[stacItem.id]) || []}
+                  checkedCallback={(value: string, checked: boolean, allChecked: Array<string>) => onCollectionCheckedChanged(thmColl, stacItem, value, checked, allChecked)}
+                ></CheckboxList>
+              }]
+            }>
+        </Accordion>
+      });
+    }
+
+    else
+      return null;
+  }
+
   return (
     <div>
       <div className='loading-spinner-container'>
@@ -335,23 +439,37 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
           onClick={btnClickUseMapExtent}
           >
         </Button>
+        <Button
+          id="btnConfirmAOI"
+          className={`${classes.buttonClass} ${getAOIConfirmClass(aoiConfirm)}`}
+          tooltip={t('custom.areaConfirm')}
+          tooltipPlacement="top"
+          variant="contained"
+          type="icon"
+          icon='<i class="material-icons">done</i>'
+          onClick={btnClickConfirmAOI}
+          >
+        </Button>
+        <Button
+          id="btnFindFeatures"
+          className={`${classes.buttonClass}`}
+          tooltip={t('custom.findFeatures')}
+          tooltipPlacement="top"
+          variant="contained"
+          type="icon"
+          icon='<i class="material-icons">done</i>'
+          onClick={btnClickFindFeatures}
+          >
+        </Button>
       </div>
       {Object.values(collections).map((thmColl) => (
         <Accordion
+          id={thmColl.theme.id}
+          className="accordion-theme"
           items={
             [{
-              title: thmColl.theme.name + " (" + thmColl.collections.length + ")",
-              content: <CheckboxList
-                  multiselect={true}
-                  listItems={Object.values(thmColl.collections).map((coll) => {
-                    return {
-                      display: coll.name,
-                      value: coll.id
-                    };
-                  })}
-                  checkedValues={checkedCollections[thmColl.theme.id] || []}
-                  checkedCallback={(e: Array<string>) => onCollectionCheckedChanged(thmColl, e)}>
-                </CheckboxList>
+              title: writeTitle(thmColl),
+              content: writeContent(thmColl)
             }]
           }>
         </Accordion>

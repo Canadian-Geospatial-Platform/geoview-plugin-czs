@@ -56,7 +56,7 @@ const App = (): JSX.Element => {
       // Create a new button panel on the appbar
       const buttonPanel = cgpv.api.map(MAP_ID).appBarButtons.createAppbarPanel(button, panel, null);
 
-      // Create the ClipZipS
+      // Create the ClipZipShip
       clipZipShipAPI = new ClipZipShipAPI(MAP_ID, URL_CLIP, URL_EXTRACT);
 
       // Set panel content

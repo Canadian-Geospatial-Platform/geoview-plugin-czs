@@ -137,3 +137,15 @@ ul.MuiList-root li {
     background-color: #808080;
 }
 
+.accordion-group {
+    margin: 10px 0px;
+}
+
+.accordion-theme {
+    background-color: #c0e9ff;
+}
+
+.accordion-stac {
+    background-color: #fffeea;
+}
+

@@ -4,6 +4,8 @@
     "clipZipShip": "Définir Découper Envoyer",
     "areaRectangle": "Dessiner un rectangle sur la carte",
     "areaPolygon": "Dessiner un polygone sur la carte",
-    "areaMapExtent": "Définir la région selon l'étendu cartographique"
+    "areaMapExtent": "Définir la région selon l'étendu cartographique",
+    "areaConfirm": "Confirmer l'étendu d'intérêt",
+    "findFeatures": "Rechercher les éléments dans l'étendu d'intérêt pour les collections sélectionnées"
   }
 }

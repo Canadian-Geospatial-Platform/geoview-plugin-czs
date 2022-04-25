@@ -4,6 +4,8 @@
     "clipZipShip": "Clip Zip Ship",
     "areaRectangle": "Draw a rectangle on the map",
     "areaPolygon": "Draw a polygon on the map",
-    "areaMapExtent": "Set area using map extent"
+    "areaMapExtent": "Set area using map extent",
+    "areaConfirm": "Confirm the area of interest",
+    "findFeatures": "Find the features in the area of interest for the selected collections"
   }
 }
