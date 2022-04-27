@@ -74,16 +74,18 @@ const App = (): JSX.Element => {
     <div className={classes.container}>
       <div
         id="mapWM"
+        class="llwp-map"
         className="llwp-map"
-        style={{
-          height: '100%',
-        }}
-        data-leaflet="{
-          'name': 'Clip Zip Ship Map',
-          'zoom': 13,
+        data-lang="en-CA"
+        data-shared="true"
+        data-config="{
+        'map': {
+          'interaction': 'dynamic',
+          'initialView': {
+            'zoom': 13,
+            'center': [53.54, -113.35]
+          },
           'projection': 3978,
-          'center': [53.54, -113.35],
-          'language': 'en-CA',
           'basemapOptions': {
             'id': 'transport',
             'shaded': false,
@@ -106,24 +108,27 @@ const App = (): JSX.Element => {
             'name': 'Energy Feature',
             'url': 'https://geoappext.nrcan.gc.ca/arcgis/rest/services/NACEI/energy_infrastructure_of_north_america_en/MapServer/1',
             'type': 'esriFeature'
-          }],
-          'extraOptions': {
+          }]
+        },
+        'theme': 'dark',
+        'appBar': {
+          'about': {
+              'en': '# An example of a markdown',
+              'fr': '# Un exemple de démarque'
+          }
+        },
+        'components': ['appbar', 'navbar', 'northArrow'],
+        'corePackages': ['overview-map', 'basemap-switcher', 'details-panel', 'layers-panel'],
+        'externalPackages': [],
+        'extraOptions': {
             'editable': true
           },
-          'plugins': []
-        }"
+        'languages': ['en-CA'],
+        'plugins': []
+      }"
       ></div>
     </div>
   );
-
-  /*{
-    'id':'wmsLYR4',
-    'name': 'Topographic OSM WMS',
-    'url': 'https://maps-cartes.services.geo.ca/server_serveur/services/NRCan/CanEcumeneV2_en/MapServer/WMSServer',
-    'type': 'ogcWMS',
-    'entries': '0,1,2,3,4,5,6,7,8,9'
-  }
-  */
 };
 
 export default App;
