@@ -40,8 +40,8 @@ const App = (): JSX.Element => {
 
       // Some variables
       const MAP_ID = "mapWM";
-      const URL_CLIP = "http://10.68.130.170:8080/processes/clip-process/execution";
-      const URL_EXTRACT = "http://10.68.130.170:8080/processes/extract-process/execution";
+      const URL_CLIP = "http://localhost:5000/processes/clip-process/execution";
+      const URL_EXTRACT = "http://localhost:5000/processes/extract-process/execution";
 
 
       // Get the Map instance
@@ -66,7 +66,7 @@ const App = (): JSX.Element => {
       buttonPanel.panel?.open();
 
       // Load the layers panel plugin
-      cgpv.api.addPlugin('layersPanel', MAP_ID, w.plugins['layersPanel'], { mapId: MAP_ID });
+      cgpv.api.addPlugin('layers-panel', MAP_ID, w.plugins['layers-panel'], { mapId: MAP_ID });
     });
   }, []);
 
