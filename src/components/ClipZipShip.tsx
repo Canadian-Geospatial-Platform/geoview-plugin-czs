@@ -182,14 +182,8 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
     // Get extent
     let bounds: L.Bounds = mapInstance.map.getBounds();
     
-    // Get coordinates array
-    let coordinates: Array<Array<number>> = [[bounds.getSouth(), bounds.getWest()],
-                                             [bounds.getNorth(), bounds.getWest()],
-                                             [bounds.getNorth(), bounds.getEast()],
-                                             [bounds.getSouth(), bounds.getEast()]];
-
     // Create the polygon
-    let polygon: L.polygon = L.polygon(coordinates);
+    let polygon: L.polygon = L.polygon([bounds.getSouthWest(), bounds.getNorthWest(), bounds.getNorthEast(), bounds.getSouthEast(), bounds.getSouthWest()]);
 
     // Add it to the map
     polygon.addTo(mapInstance.map);
@@ -206,18 +200,26 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
 
   function btnClickConfirmAOI(): void {
     // Emit that the selected collections changed
-    api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_CONFIRM, mapId, {});
+    api.event.emit({
+      event: CLIP_ZIP_SHIP_GEOMETRY_CONFIRM,
+      handlerName: mapId
+    });
     _setAOIConfirm(true);
   }
 
   function btnClickFindFeatures(): void {
    // Emit that the selected collections changed
-    api.event.emit(CLIP_ZIP_SHIP_FIND_FEATURES, mapId, {}); 
+    api.event.emit({
+      event: CLIP_ZIP_SHIP_FIND_FEATURES,
+      handlerName: mapId
+    }); 
   }
 
   function onStartDrawing(rectangle: boolean): void {
     // Emit that started drawing
-    api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_STARTED, mapId, {
+    api.event.emit({
+      event: CLIP_ZIP_SHIP_GEOMETRY_STARTED,
+      handlerName: mapId,
       rectangle: rectangle
     });
   }
@@ -230,7 +232,9 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
 
   function onCollectionCheckedChanged(themeColl: ThemeCollections, stacItem: StacItem, value: string, checked: boolean, checkedValues: Array<string>): void {
     // Emit that the selected collections changed
-    api.event.emit(CLIP_ZIP_SHIP_COLLECTIONS_CHANGED, mapId, {
+    api.event.emit({
+      event: CLIP_ZIP_SHIP_COLLECTIONS_CHANGED,
+      handlerName: mapId,
       themeCollection: themeColl,
       stacItem: stacItem,
       value: value,
@@ -241,14 +245,18 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
 
   function onFeatureHoverOn(feature: object): void {
     // Emit that the geometry changed
-    api.event.emit(CLIP_ZIP_SHIP_FEATURE_HOVER_ON, mapId, {
+    api.event.emit({
+      event: CLIP_ZIP_SHIP_FEATURE_HOVER_ON,
+      handlerName: mapId,
       feature: feature
     });
   };
 
   function onFeatureHoverOff(feature: object): void {
     // Emit that the geometry changed
-    api.event.emit(CLIP_ZIP_SHIP_FEATURE_HOVER_OFF, mapId, {
+    api.event.emit({
+      event: CLIP_ZIP_SHIP_FEATURE_HOVER_OFF,
+      handlerName: mapId,
       feature: feature
     });
   };
@@ -312,7 +320,7 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
           if (featColl.data.type == "FeatureCollection") {
             let value: FeatureCollectionItem = {
               collection: featColl.collection,
-              attributes: ["id", "province", "location", "project_name", "capital_cost"],
+              attributes: ["OBJECTID", "province", "location", "project_name", "capital_cost"],
               features: featColl.data.features
             };
             features.push(value);
@@ -321,10 +329,10 @@ export function ClipZipShip(props: ClipZipShipProps): JSX.Element {
           else if (featColl.data.type == "Coverage") {
             let value: FeatureCollectionItem = {
               collection: featColl.collection,
-              attributes: ["pixel_count"],
+              attributes: ["values_cnt"],
               features: [{
                 properties: {
-                  pixel_count: featColl.data.cntPixel
+                  values_cnt: featColl.data.ranges["null"] ? featColl.data.ranges["null"].values.length : "Undef"
                 }
               }]
             };

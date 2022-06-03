@@ -40,9 +40,9 @@ const App = (): JSX.Element => {
 
       // Some variables
       const MAP_ID = "mapWM";
-      const URL_CLIP = "http://localhost:5000/processes/clip-process/execution";
-      const URL_EXTRACT = "http://localhost:5000/processes/extract-process/execution";
-
+      const URL_CLIP = "http://localhost:5000/collections?f=json&lang=en-US";
+      const URL_FEATURES_EXTRACT = "http://localhost:5000/collections/{collectionId}/items?f=json&lang=en-US";
+      const URL_COVERAGE_EXTRACT = "http://localhost:5000/collections/{collectionId}/coverage?f=json&lang=en-US";
 
       // Get the Map instance
       const mapInstance = cgpv.api.map(MAP_ID);
@@ -57,16 +57,13 @@ const App = (): JSX.Element => {
       const buttonPanel = cgpv.api.map(MAP_ID).appBarButtons.createAppbarPanel(button, panel, null);
 
       // Create the ClipZipShip
-      clipZipShipAPI = new ClipZipShipAPI(MAP_ID, URL_CLIP, URL_EXTRACT);
+      clipZipShipAPI = new ClipZipShipAPI(MAP_ID, URL_CLIP, URL_FEATURES_EXTRACT, URL_COVERAGE_EXTRACT);
 
       // Set panel content
       buttonPanel.panel?.changeContent(clipZipShipAPI.clipZipShip);
 
       // Open it by default
       buttonPanel.panel?.open();
-
-      // Load the layers panel plugin
-      cgpv.api.addPlugin('layers-panel', MAP_ID, w.plugins['layers-panel'], { mapId: MAP_ID });
     });
   }, []);
 
@@ -74,7 +71,6 @@ const App = (): JSX.Element => {
     <div className={classes.container}>
       <div
         id="mapWM"
-        class="llwp-map"
         className="llwp-map"
         data-lang="en-CA"
         data-shared="true"
@@ -118,12 +114,11 @@ const App = (): JSX.Element => {
           }
         },
         'components': ['appbar', 'navbar', 'northArrow'],
-        'corePackages': ['overview-map', 'basemap-switcher', 'details-panel', 'layers-panel'],
+        'corePackages': ['overview-map', 'basemap-switcher', 'layers-panel'],
         'externalPackages': [],
         'extraOptions': {
-            'editable': true
-          },
-        'languages': ['en-CA'],
+          'editable': true
+        },
         'plugins': []
       }"
       ></div>

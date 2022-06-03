@@ -24,11 +24,16 @@ export type GeometryPayload = {
 };
 
 export type PyGeoAPICollectionsResponsePayload = {
-  collection: string;
-  displayName: string;
-  theme: string;
-  type: string;
+  collections: Array<PyGeoAPICollectionsCollectionResponsePayload>
 };
+
+export type PyGeoAPICollectionsCollectionResponsePayload = {
+  id: string;
+  itemType: string;
+  title: string;
+  theme: string;
+  description: string;
+}
 
 export type PyGeoAPIFeaturesResponsePayload = {
   collection: string;
@@ -53,8 +58,9 @@ export class ClipZipShipAPI {
   // The url the clip
   urlClip: string;
 
-  // The url to extract
-  urlExtract: string;
+  // The url to extract (features and coverages)
+  urlFeaturesExtract: string;
+  urlCoverageExtract: string;
 
   // The map instance
   mapInstance: object;
@@ -65,14 +71,13 @@ export class ClipZipShipAPI {
   clipGeometry?: object;
   clipGeometryIsRectangle: boolean = false;
   clipLayer?: L.Layer;
-  clipGeometryBBoxLCCFlat: Array<number> = [];
   themeColls: Array<ThemeCollections> = [];
   checkedCollections: object = {};
   flagJustDraggedVertex: boolean = false;
   doubleClickZoomEnabled: boolean = false;
 
   
-  constructor(mapId: string, urlClip: string, urlExtract: string) {
+  constructor(mapId: string, urlClip: string, urlFeaturesExtract: string, urlCoverageExtract: string) {
     // Get a reference to the windows object
     let w = window as any;
 
@@ -85,7 +90,8 @@ export class ClipZipShipAPI {
     // Keep the map id
     this.mapId = mapId;
     this.urlClip = urlClip;
-    this.urlExtract = urlExtract;
+    this.urlFeaturesExtract = urlFeaturesExtract;
+    this.urlCoverageExtract = urlCoverageExtract;
 
     // Get the Map instance
     this.mapInstance = this.cgpv.api.map(mapId);
@@ -126,9 +132,7 @@ export class ClipZipShipAPI {
 
         // Convert the color
         this.clipGeometry.setStyle({color: "orange"});
-        
-        this.convertGeometryProjection(this.clipGeometry);
-        this.startFindingCollections(this.clipGeometryBBoxLCCFlat);
+        this.startFindingCollections(this.clipGeometry);
       },
       mapId
     );
@@ -168,7 +172,7 @@ export class ClipZipShipAPI {
       (payload: object) => {
         //console.log("HANDLE API : CLIP_ZIP_SHIP_FIND_FEATURES", payload);
         // Start finding features
-        this.startFindingFeatures(this.clipGeometryBBoxLCCFlat);
+        this.startFindingFeatures(this.clipGeometry);
       },
       mapId
     );
@@ -202,7 +206,7 @@ export class ClipZipShipAPI {
 
     // Listen to the map click event
     this.mapInstance.map.on('click', (e: any) => {
-      console.log("map.click", this.clipLayer, this.flagJustDraggedVertex);
+      console.log("map.click", this.clipLayer, this.flagJustDraggedVertex, e.latlng);
       if (this.flagJustDraggedVertex) return;
 
       // If current layer
@@ -285,7 +289,9 @@ export class ClipZipShipAPI {
     feature.setStyle({color:"#3388ff"});
 
     // Emit that we've loaded new collections
-    this.cgpv.api.event.emit(CLIP_ZIP_SHIP_GEOMETRY_CHANGED, this.mapId, {
+    this.cgpv.api.event.emit({
+      event: CLIP_ZIP_SHIP_GEOMETRY_CHANGED,
+      handlerName: this.mapId,
       feature: feature
     });
   }
@@ -302,38 +308,7 @@ export class ClipZipShipAPI {
     }
   }
 
-  convertGeometryProjection = (geom: L.Layer): void => {
-    // Create the bbox as defined from the current shape
-    let bbox = [[geom.getBounds().getSouthWest().lng, geom.getBounds().getSouthWest().lat], [geom.getBounds().getNorthEast().lng, geom.getBounds().getNorthEast().lat]];
-
-    // If the bounding box in lat is higher in the south west than on the north east, reverse them values
-    if (bbox[0][1] > bbox[1][1]) {
-      let temp = bbox[0][1];
-      bbox[0][1] = bbox[1][1];
-      bbox[1][1] = temp;
-    }
-
-    // // Add the geometry to the map
-    // let toto = this.addToMap(this.createPolygonFromBounds(geom.getBounds()), {color: "green"}, GEOMETRY_GROUP_HOVER);
-    // setTimeout(() => {
-    //   this.mapInstance.layer.vector.deleteGeometriesFromGroup(GEOMETRY_GROUP_HOVER);
-    // }, 5000)
-
-    // Project to LCC
-    let bboxLCC = this.mapInstance.projection.latLngToLCC(bbox);
-    //bboxLCC = this.mapInstance.projection.lccToWm(bboxLCC);
-    //bboxLCC = this.mapInstance.projection.wmToLcc(bboxLCC);
-
-
-    // Flatten them
-    this.clipGeometryBBoxLCCFlat = [];
-    bboxLCC.forEach((r: Array<number>) => {
-      // Add the 2 coordinates to the flat array
-      this.clipGeometryBBoxLCCFlat.push(r[0], r[1]);
-    });
-  };
-
-  startFindingCollections = (geom: Array<number>): void => {    
+  startFindingCollections = (geom: L.Layer): void => {    
     // Flush all geometries from vector geometries
     this.mapInstance.layer.vector.deleteGeometriesFromGroup(GEOMETRY_GROUP_FEATURES);
 
@@ -341,7 +316,7 @@ export class ClipZipShipAPI {
     this.findCollections(geom)
   };
 
-  startFindingFeatures = (geom: Array<number>): void => {    
+  startFindingFeatures = (geom: L.Layer): void => {    
     // Flush all geometries from vector geometries
     this.mapInstance.layer.vector.deleteGeometriesFromGroup(GEOMETRY_GROUP_FEATURES);
 
@@ -349,21 +324,23 @@ export class ClipZipShipAPI {
     this.findFeaturesPerCollection(geom)
   };
 
-  findCollections = (geom: Array<number>): void => {
+  findCollections = (geom: L.Layer): void => {
     console.log("Find collections", geom);
 
     // Emit that we're loading the Clip Zip Ship
-    this.cgpv.api.event.emit(CLIP_ZIP_SHIP_LOADING_SPINNER, this.mapId, {
+    this.cgpv.api.event.emit({
+      event: CLIP_ZIP_SHIP_LOADING_SPINNER,
+      handlerName: this.mapId,
       isLoading: true
     });
 
     // Get the collections for the bounding box
-    this.mapInstance.getCollections(this.urlClip, geom).then((colls: Array<PyGeoAPICollectionsResponsePayload>) => {
+    this.mapInstance.getCollections(this.urlClip, geom, 4326).then((response: PyGeoAPICollectionsResponsePayload) => {
       // Only keep Feature types
       
       // Group the collections by themes
       this.themeColls = [];
-      colls.forEach((collection: PyGeoAPICollectionsResponsePayload) => {
+      response.collections.forEach((collection: PyGeoAPICollectionsCollectionResponsePayload) => {
         // Find the theme
         let thmColl = this.themeColls.find((thmCol) => {
           return thmCol.theme.id == collection.theme;
@@ -379,22 +356,22 @@ export class ClipZipShipAPI {
         }
 
         // If stac type
-        if (collection.type == "stac" && collection.items) {
-          collection.items.forEach((itm) => {
-            // Add the collection to the ThemeCollections
-            thmColl.stacItems.push({
-              id: itm.id,
-              assets: itm.asset
-            });  
-          });
+        if (collection.itemType == "stac" && collection.items) {
+          // collection.items.forEach((itm) => {
+          //   // Add the collection to the ThemeCollections
+          //   thmColl.stacItems.push({
+          //     id: itm.id,
+          //     assets: itm.asset
+          //   });  
+          // });
         }
 
         else {
           // Add the collection to the ThemeCollections
           thmColl.collections.push({
-            id: collection.collection,
-            type: collection.type,
-            name: collection.collection
+            id: collection.id,
+            type: collection.itemType,
+            name: collection.title
           });
         }
       });
@@ -405,12 +382,16 @@ export class ClipZipShipAPI {
       });
 
       // Emit that we're done loading
-      this.cgpv.api.event.emit(CLIP_ZIP_SHIP_LOADING_SPINNER, this.mapId, {
+      this.cgpv.api.event.emit({
+        event: CLIP_ZIP_SHIP_LOADING_SPINNER,
+        handlerName: this.mapId,
         isLoading: false
       });
 
       // Emit that we've loaded new collections
-      this.cgpv.api.event.emit(CLIP_ZIP_SHIP_LOADING_COLLECTIONS, this.mapId, {
+      this.cgpv.api.event.emit({
+        event: CLIP_ZIP_SHIP_LOADING_COLLECTIONS,
+        handlerName: this.mapId,
         collections: this.themeColls,
         checkedCollections: this.checkedCollections
       });
@@ -423,7 +404,7 @@ export class ClipZipShipAPI {
     });
   };
 
-  findFeaturesPerCollection = (geom: Array<number>): void => {
+  findFeaturesPerCollection = (geom: L.Layer): void => {
     // Make sure the checked collections can only contain valid collections
     let actualCollections: Array<CollectionItem> = [];
     this.themeColls.forEach((thmColl: ThemeCollections) => {
@@ -437,15 +418,25 @@ export class ClipZipShipAPI {
     console.log("Finding features for", actualCollections);
     
     // Emit that we're loading the Clip Zip Ship
-    this.cgpv.api.event.emit(CLIP_ZIP_SHIP_LOADING_SPINNER, this.mapId, {
+    this.cgpv.api.event.emit({
+      event: CLIP_ZIP_SHIP_LOADING_SPINNER,
+      handlerName: this.mapId,
       isLoading: true
     });
 
     // For each collection id
     let promises: Array<PyGeoAPIFeaturesResponsePayload> = [];
     actualCollections.forEach((coll: CollectionItem) => {
-      // Get the features
-      promises.push(this.mapInstance.getFeatures(this.urlExtract, coll.id, coll.type, geom));
+      // Depending on the collection
+      if (coll.type == "feature") {
+        // Get the features
+        promises.push(this.mapInstance.getFeatures(this.urlFeaturesExtract, coll.id, geom, 4326));  
+      }
+
+      else if (coll.type == "coverage") {
+        // Get the coverage
+        promises.push(this.mapInstance.getFeatures(this.urlCoverageExtract, coll.id, geom, 4326));   
+      }
     });
 
     // Once all queries have completed
@@ -457,7 +448,9 @@ export class ClipZipShipAPI {
       this.loadOnMap(featureColls);
 
       // Emit that we're done loading
-      this.cgpv.api.event.emit(CLIP_ZIP_SHIP_LOADING_SPINNER, this.mapId, {
+      this.cgpv.api.event.emit({
+        event: CLIP_ZIP_SHIP_LOADING_SPINNER,
+        handlerName: this.mapId,
         isLoading: false
       });
     });
@@ -465,7 +458,9 @@ export class ClipZipShipAPI {
 
   loadOnUI = (featureColls: Array<PyGeoAPIFeaturesResponsePayload>): void => {
     // Emit that we've loaded new collections
-    this.cgpv.api.event.emit(CLIP_ZIP_SHIP_LOADING_FEATURES, this.mapId, {
+    this.cgpv.api.event.emit({
+      event: CLIP_ZIP_SHIP_LOADING_FEATURES,
+      handlerName: this.mapId,
       data: featureColls
     });
   };

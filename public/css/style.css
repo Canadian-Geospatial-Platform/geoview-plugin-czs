@@ -70,8 +70,8 @@ td {
 }
 
 .llwp-map {
-    /*height: 800px;
-    max-height: 90vh;*/
+    height: 100vh;
+    z-index: 0;
 }
 
 .legendTable {
