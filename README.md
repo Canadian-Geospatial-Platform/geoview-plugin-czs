@@ -7,7 +7,7 @@ This project is an example demo that shows how you can use the viewer from an ex
 ```html
 The viewer is being loaded in public/index.html as a script tag
 
-<script src="https://yass0016.github.io/GeoView/gcpv-main.js"></script>
+<script src="https://canadian-geospatial-platform.github.io/GeoView/public/gcpv-main.js"></script>
 ```
 
 ## Running the project
