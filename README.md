@@ -1,5 +1,7 @@
 # geoview-plugins-demo
 
+*Alex: This project is now obsolete and being replaced by {I'll post the link here when I get the repo setup}.*
+
 This project is an example demo that shows how you can use the viewer from an external package
 
 [Demo](https://canadian-geospatial-platform.github.io/geoview-plugins-demo/)
