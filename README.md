@@ -1,6 +1,6 @@
 # geoview-plugins-demo
 
-*Alex: This project is now obsolete and being replaced by {I'll post the link here when I get the repo setup}.*
+*Alex: This project is now obsolete and being replaced by https://github.com/federal-geospatial-platform/geoview_core_czs*
 
 This project is an example demo that shows how you can use the viewer from an external package
 
